@@ -1,10 +1,9 @@
-import { read_data } from './read.js'
-import { draw_town, draw_country } from './draw.js'
+import { read } from './read.js'
+import { draw } from './draw.js'
 
 function main() {
-    var data = read_data();
-    draw_town(data);
-    draw_country(data);
+    var data = read();
+    draw(data);
 }
 
 main();

@@ -1,5 +1,5 @@
 
-export function read_data() {
+export function read() {
     var data = {};
     d3.json("./data/town_info.json").then(townInfo => {
         for (const country in townInfo) {
