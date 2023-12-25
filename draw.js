@@ -58,6 +58,35 @@ function draw_town(data) {
     })
 }
 
+function draw_slider() {
+    // slider constants
+    const sliderX = 400;
+    const sliderY = 750;
+    const sliderWidth = 300;
+
+    // define slider
+    const slider = d3.sliderTop()
+        .min(0).max(100).step(1)
+        .default([0, 100])
+        .ticks(0)
+        .width(sliderWidth)
+        .on("onchange", function(val){
+        });
+    
+    // draw slider
+    svg.append("g")
+        .attr("class", "my-slider")
+        .attr("transform", `translate(${sliderX}, ${sliderY})`)
+        .call(slider)
+        .append("text")
+            .attr("class", "label")
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "hanging")
+            .attr("x", sliderWidth/2)
+            .attr("y", 15)
+            .text("Time");
+}
+
 function draw_country(data) {
     d3.json("./TopoJSON/COUNTY_MOI_1090820.json").then(topoJsonData => {
         // Convert from TopoJSON to GeoJSON
@@ -84,4 +113,6 @@ export function draw(data) {
 
     draw_town(data);
     draw_country(data);
+
+    draw_slider();
 }
