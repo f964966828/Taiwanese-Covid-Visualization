@@ -51,7 +51,7 @@ function draw_town(data) {
             .style("stroke", "none")
             .on("mouseover", function (event, d) {
                 var country = d.properties.COUNTYNAME.replace('臺', '台');
-                var town = d.properties.TOWNNAME;
+                var town = d.properties.TOWNNAME.replace('臺', '台');
                 console.log(country, town);
                 console.log(data[country][town]);
             })
