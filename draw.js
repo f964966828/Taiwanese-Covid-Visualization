@@ -37,55 +37,175 @@ function resetZoom() {
 }
 
 function draw_town(data) {
+    /*const colorScaleConfirm = d3.linear()
+        .domain([])
+        .range(["gray", "red"])*/
+
     d3.json("./TopoJSON/TOWN_MOI_1120825.json").then(topoJsonData => {
         // Convert from TopoJSON to GeoJSON
         const geometries = topojson.feature(topoJsonData, topoJsonData.objects["TOWN_MOI_1120825"]);
 
+
+        // date object to numeric
+        function dateToNum(date){
+            const y = date.getFullYear();
+            const m = date.getMonth() + 1;
+            const d = date.getDate();
+            return y*10000 + m*100 + d;
+        }
+
+        // numeric date to object
+        function numToDate(num, offset){
+            const y = Math.floor(num/10000);
+            const m = Math.floor((num%10000)/100) - 1;
+            const d = (num%100) + offset;
+            return new Date(y, m, d);
+        }
+
+
+        // 給定區域，計算近七天的確診人數(原資料會有缺失值)
+        function countConfirmed(country, town, t){
+            const arr = data[country][town].confirmed.map(d => (
+                +d["個案研判日"].replaceAll("-", "")
+            ));
+            
+            // upper index (now)
+            const upperIdx = arr.length - d3.bisectRight(arr.slice().reverse(), t);
+            if (upperIdx == arr.length){  // no one confirmed
+                return 0;
+            }
+
+            // lower index (now)
+            const last7_day = numToDate(t, -7);
+            const last7_t = dateToNum(last7_day);
+            const lowerIdx = arr.length - d3.bisectRight(arr.slice().reverse(), last7_t);
+            
+            // compute cases
+            if (lowerIdx == arr.length){
+                const upper = +data[country][town].confirmed[upperIdx]["累計確診人數"];
+                return upper;
+            }
+            else{
+                const upper = +data[country][town].confirmed[upperIdx]["累計確診人數"];
+                const lower = +data[country][town].confirmed[lowerIdx]["累計確診人數"];
+                return upper - lower;
+            }
+        }
+
+
+        // compute max case
+        let confirmedMax = 0;
+        for(let country of Object.keys(data)){
+            if (country == '全國'){
+                continue;
+            }
+            for(let town of Object.keys(data[country])){
+                if (town == '全區'){
+                    continue;
+                }
+                for(let d of data[country][town].confirmed){
+                    confirmedMax = Math.max(confirmedMax, Math.round(d['七天移動平均新增確診人數']*7))
+                }
+            }
+
+        }
+        //console.log(confirmedMax);
+
+
+        // compute time range
+        let timeMin = 90121231
+        let timeMax = 0;
+        for(let country of Object.keys(data)){
+            if (country == '全國'){
+                continue;
+            }
+            for(let d of data[country]['全區'].confirmed){
+                const t = +d["個案研判日"].replaceAll("-", "");
+                timeMax = Math.max(timeMax, t);
+                timeMin = Math.min(timeMin, t);
+            }
+        }
+        console.log(timeMin);
+        console.log(timeMax);
+
+
+        // color scale
+        const colorScale = d3.scaleLinear()
+            .domain([0, confirmedMax])
+            .range(["#ffffff", "#ff0000"]);
+
+        
         // Draw the map
-        townGroup
+        const towns = townGroup
             .selectAll("path")
             .data(geometries.features)
             .join("path")
-            .attr("fill", "gray")
-            .attr("d", pathGenerator)
-            .style("stroke", "none")
-            .on("mouseover", function (event, d) {
-                var country = d.properties.COUNTYNAME.replace('臺', '台');
-                var town = d.properties.TOWNNAME.replace('臺', '台');
-                console.log(country, town);
-                console.log(data[country][town]);
-            })
+                .attr("fill", d => {
+                    const country = d.properties.COUNTYNAME.replace('臺', '台');
+                    const town = d.properties.TOWNNAME.replace('臺', '台');
+                    return colorScale(countConfirmed(country, town, 20200128));
+                })
+                .attr("d", pathGenerator)
+                .style("stroke", "none");
+                
+        const townsTooltip = towns.append("title")
+            .text(d => {
+                const country = d.properties.COUNTYNAME.replace('臺', '台');
+                const town = d.properties.TOWNNAME.replace('臺', '台');
+                return `20200128-${country}-${town}: ${countConfirmed(country, town, 20200128)} cases in 7 days`;
+            });
+        
+        
+        // draw slider
+        function draw_slider() {
+            // slider constants
+            const sliderX = 100;
+            const sliderY = 750;
+            const sliderWidth = 500;
+        
+            // define slider
+            const slider = d3.sliderTop()
+                .min(0).max(1318).step(1)
+                .default(0)
+                .ticks(0)
+                .width(sliderWidth)
+                .on("onchange", function(val){
+                    const dateNum = dateToNum(numToDate(20200128, val));
+
+                    towns.attr("fill", d=>{
+                        const country = d.properties.COUNTYNAME.replace('臺', '台');
+                        const town = d.properties.TOWNNAME.replace('臺', '台');
+                        const cases = countConfirmed(country, town, dateNum);
+                        return colorScale(cases);
+                    });
+                    townsTooltip.text(d=>{
+                        const country = d.properties.COUNTYNAME.replace('臺', '台');
+                        const town = d.properties.TOWNNAME.replace('臺', '台');
+                        const cases = countConfirmed(country, town, dateNum);
+                        return `${dateNum}-${country}-${town}: ${cases} cases in 7 days`;
+                    });
+
+                });
+            
+            // draw slider
+            svg.append("g")
+                .attr("class", "my-slider")
+                .attr("transform", `translate(${sliderX}, ${sliderY})`)
+                .call(slider)
+                .append("text")
+                    .attr("class", "label")
+                    .attr("text-anchor", "middle")
+                    .attr("dominant-baseline", "hanging")
+                    .attr("x", sliderWidth/2)
+                    .attr("y", 15)
+                    .text("Time");
+        }
+
+        draw_slider();
+        
     })
 }
 
-function draw_slider() {
-    // slider constants
-    const sliderX = 400;
-    const sliderY = 750;
-    const sliderWidth = 300;
-
-    // define slider
-    const slider = d3.sliderTop()
-        .min(0).max(100).step(1)
-        .default([0, 100])
-        .ticks(0)
-        .width(sliderWidth)
-        .on("onchange", function(val){
-        });
-    
-    // draw slider
-    svg.append("g")
-        .attr("class", "my-slider")
-        .attr("transform", `translate(${sliderX}, ${sliderY})`)
-        .call(slider)
-        .append("text")
-            .attr("class", "label")
-            .attr("text-anchor", "middle")
-            .attr("dominant-baseline", "hanging")
-            .attr("x", sliderWidth/2)
-            .attr("y", 15)
-            .text("Time");
-}
 
 function draw_country(data) {
     d3.json("./TopoJSON/COUNTY_MOI_1090820.json").then(topoJsonData => {
@@ -113,6 +233,4 @@ export function draw(data) {
 
     draw_town(data);
     draw_country(data);
-
-    draw_slider();
 }
