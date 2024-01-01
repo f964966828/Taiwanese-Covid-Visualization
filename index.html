@@ -1,22 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <title>Taiwanese COVID Visualization</title>
-        <script src="https://d3js.org/d3.v6.js"></script>
-        <script src="https://unpkg.com/topojson@3.0.2/dist/topojson.js"></script>
-        <script src="https://unpkg.com/d3-simple-slider@2.0.0/dist/d3-simple-slider.min.js"></script>
-        
-        <script type="module" src="main.js"></script>
-    </head>
-    <body>
-        <h1>Taiwanese COVID Visualization</h1>
-        <h2>312552014 林浩君 / 312551044 薛乃仁 / 109550074 吳秉澍</h2>
-        
+  <head>
+    <meta charset="utf-8" />
+    <title>Taiwanese COVID Visualization</title>
+    <script src="https://d3js.org/d3.v6.js"></script>
+    <script src="https://unpkg.com/topojson@3.0.2/dist/topojson.js"></script>
+    <script src="https://unpkg.com/d3-simple-slider@2.0.0/dist/d3-simple-slider.min.js"></script>
+
+    <script type="module" src="main.js"></script>
+  </head>
+  <body>
+    <h1>Taiwanese COVID Visualization</h1>
+    <h2>312552014 林浩君 / 312551044 薛乃仁 / 109550074 吳秉澍</h2>
+
+    <div>
+      <button id="zoom-reset-button">Reset</button>
+    </div>
+    <div
+      style="display: grid; column-gap: 50px; grid-template-columns: 900px 900px"
+    >
+      <div>
+        <p>Map</p>
+        <svg id="taiwan-map" width="800" height="800" />
+      </div>
+      <div style="display: grid; row-gap: 50px; grid-template-rows: 1fr 5fr">
         <div>
-            <button id="zoom-reset-button">Reset</button>
+          <p>Line Chart</p>
+          <svg id="taiwan-line-chart" width="800" height="200" ></svg>
         </div>
-        
-        <svg id="taiwan-map" width="800" height="800"></svg>
-    </body>
+        <!-- <div> -->
+        <!--   <p>Country</p> -->
+        <!--   <svg id="taiwan-country-bar"></svg> -->
+        <!-- </div> -->
+      </div>
+    </div>
+  </body>
 </html>
+
