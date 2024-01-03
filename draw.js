@@ -235,6 +235,7 @@ function drawMapChart() {
                             .style("stroke-width", "3px")
                             .attr("active", "true");
                     }
+                    updateLineCharts();
                 })
         });
     }
@@ -324,6 +325,27 @@ function drawLineCharts() {
         .style("fill", "none")
         .style("stroke", "black")
         .style("stroke-width", "2px");
+
+    const g = lineCharts
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    // Add X axis
+    g.append("g")
+        .attr("id", "xAxis")
+        .attr("transform", "translate(0," + height + ")");
+
+    // Add Y axis
+    g.append("g").attr("id", "yAxis");
+
+    // Add the line
+    g.append("g").attr("id", "lines");
+
+    // Add the points
+    g.append("g").attr("id", "dots");
+
+    // Add the labels
+    g.append("g").attr("id", "labels");
 }
 
 function updateMapChart() {
@@ -448,9 +470,94 @@ function updateLineChart(country = "全國", town = "全區") {
         .attr("fill", "#69b3a2");
 }
 
+function updateLineCharts() {
+    const duration = 200;
+    const margin = { top: 10, right: 30, bottom: 30, left: 60 };
+    const lineCharts = d3.select("svg#taiwan-line-charts"),
+        width = +lineCharts.attr("width") - margin.right - margin.left,
+        height = +lineCharts.attr("height") - margin.top - margin.bottom;
+
+    const activeTowns = d3.selectAll("#townGroup").selectAll("path[active='true']");
+    const dataReady = activeTowns.data().map(d => {
+        const country = d.properties.COUNTYNAME.replace("臺", "台");
+        const town = d.properties.TOWNNAME.replace("臺", "台");
+        return {
+            location: `${country} - ${town}`,
+            values: newConfirmed(country, town, dateNum)
+        };
+    });
+    if (dataReady.length == 0) {
+        dataReady.push({
+            location: "全國 - 全區",
+            values: newConfirmed("全國", "全區", dateNum)
+        });
+    }
+    
+    const locations = Object.keys(data).map(country => {
+        return Object.keys(data[country]).map(town => `${country} - ${town}`);
+    }).flat();
+    const color = d3.scaleOrdinal()
+        .domain(locations)
+        .range(d3.schemeSet2);
+
+    const g = lineCharts.selectAll("g");
+
+    const x = d3
+        .scaleTime()
+        .domain(d3.extent(dataReady.map(data => data.values.map(d => d.date)).flat()))
+        .range([0, width]);
+    g.selectAll("#xAxis").transition().duration(duration).call(d3.axisBottom(x));
+
+    const y = d3
+        .scaleSymlog()
+        .domain(d3.extent(dataReady.map(data => data.values.map(d => d.new)).flat()))
+        .range([height, 0]);
+    g.selectAll("#yAxis").transition().duration(duration).call(d3.axisLeft(y));
+    
+    g.selectAll("path").remove();
+    const line = d3.line()
+        .x(d => x(d.date))
+        .y(d => y(d.new));
+    g.selectAll("#lines").selectAll("myLines")
+        .data(dataReady)
+        .join("path")
+            .transition()
+            .duration(duration)
+            .attr("fill", "none")
+            .attr("stroke", d => color(d.location))
+            .attr("stroke-width", 3)
+            .attr("d", d => line(d.values));
+
+    g.selectAll("circle").remove();
+    g.selectAll("#dots").selectAll("myDots")
+        .data(dataReady)
+        .join("g")
+            .style("fill", d => color(d.location))
+        .selectAll("myPoints")
+        .data(d => d.values)
+        .join("circle")
+            .attr("cx", d => x(d.date))
+            .attr("cy", d => y(d.new))
+            .attr("r", 5)
+            .attr("stroke", "white")
+
+    g.selectAll("#labels").selectAll("g").remove();
+    g.selectAll("#labels").selectAll("myLabels")
+        .data(dataReady)
+        .join("g")
+            .append("text")
+            .datum(d => { return {location: d.location, value: d.values[d.values.length - 2]}; }) // keep only the last value of each time series
+            .attr("transform",d => `translate(${x(d.value.date)},${y(d.value.new)})`) // Put the text at the position of the last point
+            .attr("x", 12) // shift the text a bit more right
+            .text(d => d.location)
+            .style("fill", d => color(d.location))
+            .style("font-size", 20)
+}
+
 function update() {
     updateMapChart();
     updateLineChart();
+    updateLineCharts();
 }
 
 export function draw(d) {
