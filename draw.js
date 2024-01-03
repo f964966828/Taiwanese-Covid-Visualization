@@ -263,6 +263,21 @@ function drawLineChart() {
   g.append("g").attr("id", "dots");
 }
 
+function drawLineCharts() {
+  const margin = { top: 10, right: 30, bottom: 30, left: 60 };
+  const lineCharts = d3.select("#taiwan-line-charts"),
+    width = +lineCharts.attr("width") - margin.right - margin.left,
+    height = +lineCharts.attr("height") - margin.top - margin.bottom;
+
+  lineCharts
+    .append("rect")
+    .attr("width", width + margin.right + margin.left)
+    .attr("height", height + margin.top + margin.bottom)
+    .style("fill", "none")
+    .style("stroke", "black")
+    .style("stroke-width", "2px");
+}
+
 function updateMapChart() {
   // compute max case
   let confirmedMax = 0;
@@ -392,6 +407,7 @@ export function draw(d) {
   data = d;
   drawMapChart();
   drawLineChart();
+  drawLineCharts();
 
   // Select dataset
   d3.select("#dataset").on("change", changeDataset);
