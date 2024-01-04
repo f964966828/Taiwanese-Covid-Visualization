@@ -181,8 +181,9 @@ function drawMapChart() {
         .join("path")
         .attr("fill", "none") // fill none here, just show the stroke
         .attr("d", pathGenerator)
-        .style("stroke", "black")
-        .style("stroke-width", "1px");
+        .style("stroke", "#ffffff")
+        .style("stroke-width", "2px")
+        .style("opacity", 0.2);
     });
   }
 
@@ -202,10 +203,12 @@ function drawMapChart() {
         .attr("fill", "none")
         .attr("d", pathGenerator)
         .style("stroke", "none")
+        .style("stroke-width", "0px")
         .on("mouseover", (event, d) => {
           d3.select(event.currentTarget)
-            .style("stroke", "purple")
-            .style("stroke-width", "3px");
+            .style("stroke", "#364156")
+            .style("stroke-width", "2px")
+            .raise();
 
           const country = d.properties.COUNTYNAME.replace("臺", "台");
           const town = d.properties.TOWNNAME.replace("臺", "台");
@@ -216,7 +219,7 @@ function drawMapChart() {
           const active = element.attr("active") === "true";
 
           if (!active) {
-            element.style("stroke", "none");
+            element.style("stroke", "none").lower();
           }
 
           updateLineChart();
@@ -228,12 +231,13 @@ function drawMapChart() {
             element.style("stroke", "none").attr("active", "false");
           } else {
             element
-              .style("stroke", "purple")
-              .style("stroke-width", "3px")
+              .style("stroke", "#364156")
+              .style("stroke-width", "2px")
               .attr("active", "true");
           }
           updateLineCharts();
-        });
+        })
+        .append("title");
     });
   }
 
@@ -251,6 +255,10 @@ function drawMapChart() {
       .step(1)
       .default(0)
       .ticks(0)
+      .displayFormat((val) => {
+        const date = numToDate(20200128, val);
+        return d3.utcFormat("%Y-%m-%d")(date);
+      })
       .width(sliderWidth)
       .on("onchange", function (val) {
         dateNum = dateToNum(numToDate(20200128, val));
@@ -348,6 +356,7 @@ function drawLineCharts() {
 function updateMapChart() {
   // compute max case
   let confirmedMax = 0;
+  let ddate = 0;
   for (let country of Object.keys(data)) {
     if (country == "全國") {
       continue;
@@ -357,28 +366,33 @@ function updateMapChart() {
         continue;
       }
       for (let d of data[country][town][dataset]) {
+        const old = confirmedMax;
         confirmedMax = Math.max(
           confirmedMax,
           (() => {
             if (dataset === "confirmed") {
-              return Math.ceil(
-                Math.log(d["七天移動平均新增確診人數"] * 7) / Math.log(10),
-              );
+              return Math.ceil(d["七天移動平均新增確診人數"] * 7);
             } else if (dataset === "death") {
-              return Math.ceil(
-                Math.log(d["七天移動平均新增死亡人數"] * 7) / Math.log(10),
-              );
+              return Math.ceil(d["七天移動平均新增死亡人數"] * 7);
             }
           })(),
         );
+        if (old != confirmedMax) {
+          ddate = d["個案研判日"];
+        }
       }
     }
   }
   // color scale
   const colorScale = d3
     .scaleLinear()
-    .domain([0, confirmedMax])
-    .range(["#ffffff", "#ff0000"]);
+    .domain([
+      0,
+      Math.max(confirmedMax / 25, 8),
+      Math.max(confirmedMax / 5, 16),
+      confirmedMax,
+    ])
+    .range(["#69b3a2", "#F8E16C", "#F79377", "#FF7477"]);
 
   const towns = d3.selectAll("#townGroup").selectAll("path");
   const townsTooltip = towns.selectAll("title");
@@ -388,20 +402,20 @@ function updateMapChart() {
     const town = d.properties.TOWNNAME.replace("臺", "台");
     const cases = countConfirmed(country, town, dateNum);
 
-    return colorScale(Math.log(cases) / Math.log(10));
+    return colorScale(cases);
   });
   townsTooltip.text((d) => {
     const country = d.properties.COUNTYNAME.replace("臺", "台");
     const town = d.properties.TOWNNAME.replace("臺", "台");
     const cases = countConfirmed(country, town, dateNum);
 
-    return `${dateNum}-${country}-${town}: ${cases} cases in 7 days`;
+    return `${country}-${town}: ${cases} cases in 7 days`;
   });
 }
 
 function updateLineChart(country = "全國", town = "全區") {
   d3.select("#taiwan-line-chart-title").text(
-    `Line Chart - ${country} - ${town}`,
+    `Quick Preview - ${country} - ${town}`,
   );
 
   const data = newConfirmed(country, town, dateNum);
@@ -420,7 +434,15 @@ function updateLineChart(country = "全國", town = "全區") {
       }),
     )
     .range([0, width]);
-  g.selectAll("#xAxis").transition().duration(duration).call(d3.axisBottom(x));
+  g.selectAll("#xAxis")
+    .transition()
+    .duration(duration)
+    .call(
+      d3
+        .axisBottom(x)
+        .ticks(d3.timeDay.every(1))
+        .tickFormat(d3.utcFormat("%Y-%m-%d")),
+    );
 
   const y = d3
     .scaleSymlog()
@@ -438,7 +460,7 @@ function updateLineChart(country = "全國", town = "全區") {
     .duration(duration)
     .attr("fill", "none")
     .attr("stroke", "#69b3a2")
-    .attr("stroke-width", 1.5)
+    .attr("stroke-width", 3)
     .attr(
       "d",
       d3
@@ -509,7 +531,15 @@ function updateLineCharts() {
       d3.extent(dataReady.map((data) => data.values.map((d) => d.date)).flat()),
     )
     .range([0, width]);
-  g.selectAll("#xAxis").transition().duration(duration).call(d3.axisBottom(x));
+  g.selectAll("#xAxis")
+    .transition()
+    .duration(duration)
+    .call(
+      d3
+        .axisBottom(x)
+        .ticks(d3.timeDay.every(1))
+        .tickFormat(d3.utcFormat("%Y-%m-%d")),
+    );
 
   const y = d3
     .scaleSymlog()
