@@ -167,7 +167,8 @@ function drawMapChart() {
   const pathGenerator = d3.geoPath().projection(projection);
 
   function drawCountry() {
-    d3.json("./TopoJSON/COUNTY_MOI_1090820.json").then((topoJsonData) => {
+    const promises = d3.json("./TopoJSON/COUNTY_MOI_1090820.json");
+    promises.then((topoJsonData) => {
       // Convert from TopoJSON to GeoJSON
       const geometries = topojson.feature(
         topoJsonData,
@@ -185,10 +186,12 @@ function drawMapChart() {
         .style("stroke-width", "2px")
         .style("opacity", 0.2);
     });
+    return promises;
   }
 
   function drawTown() {
-    d3.json("./TopoJSON/TOWN_MOI_1120825.json").then((topoJsonData) => {
+    const promises = d3.json("./TopoJSON/TOWN_MOI_1120825.json");
+    promises.then((topoJsonData) => {
       // Convert from TopoJSON to GeoJSON
       const geometries = topojson.feature(
         topoJsonData,
@@ -239,6 +242,7 @@ function drawMapChart() {
         })
         .append("title");
     });
+    return promises;
   }
 
   function drawSlider() {
@@ -279,9 +283,10 @@ function drawMapChart() {
       .attr("y", 15)
       .text("Time");
   }
-  drawCountry();
-  drawTown();
+  const promises1 = drawCountry();
+  const promises2 = drawTown();
   drawSlider();
+  return promises1, promises2;
 }
 
 function drawLineChart() {
@@ -612,9 +617,9 @@ function update() {
   updateLineCharts();
 }
 
-export function draw(d) {
+export async function draw(d) {
   data = d;
-  drawMapChart();
+  await drawMapChart();
   drawLineChart();
   drawLineCharts();
 
